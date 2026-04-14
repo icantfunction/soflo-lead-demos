@@ -7,8 +7,12 @@ import { getCityShort } from '@/lib/leads'
 
 interface Props { lead: Lead }
 
-const PH = (id: string, w = 1400, q = 85) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&q=${q}&auto=format&fit=crop`
+const PH = (urlOrId: string, w = 1400, q = 85) => {
+  const base = urlOrId.startsWith('http')
+    ? urlOrId
+    : `https://images.unsplash.com/photo-${urlOrId}`
+  return `${base}?w=${w}&q=${q}&auto=format&fit=crop`
+}
 
 // Warm editorial filter applied to every image for cohesion
 const IMG_STYLE = { filter: 'saturate(0.88) brightness(0.97) contrast(1.03)' } as const
