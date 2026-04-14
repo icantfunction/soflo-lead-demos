@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import type { Lead } from '@/lib/leads'
 import { getCategoryConfig } from '@/lib/categoryConfig'
 import { getCityShort } from '@/lib/leads'
@@ -10,17 +10,10 @@ interface Props { lead: Lead }
 const PH = (id: string, w = 1400, q = 85) =>
   `https://images.unsplash.com/photo-${id}?w=${w}&q=${q}&auto=format&fit=crop`
 
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className={i < rating ? 'text-amber-400' : 'text-gray-600'}>★</span>
-      ))}
-    </div>
-  )
-}
+// Warm editorial filter applied to every image for cohesion
+const IMG_STYLE = { filter: 'saturate(0.88) brightness(0.97) contrast(1.03)' } as const
 
-function useInView(threshold = 0.12) {
+function useInView(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null)
   const [inView, setInView] = useState(false)
   useEffect(() => {
@@ -36,6 +29,89 @@ function useInView(threshold = 0.12) {
   return { ref, inView }
 }
 
+function TestimonialCarousel({ config }: { config: ReturnType<typeof getCategoryConfig> }) {
+  const [active, setActive] = useState(0)
+  const [dir, setDir] = useState<'left' | 'right'>('left')
+  const [animKey, setAnimKey] = useState(0)
+  const total = config.testimonials.length
+
+  const go = useCallback((next: number, direction: 'left' | 'right') => {
+    setDir(direction)
+    setAnimKey(k => k + 1)
+    setActive(next)
+  }, [])
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      go((active + 1) % total, 'left')
+    }, 5500)
+    return () => clearInterval(t)
+  }, [active, total, go])
+
+  const t = config.testimonials[active]
+
+  return (
+    <div className="max-w-3xl mx-auto text-center">
+      {/* Quote */}
+      <div
+        key={animKey}
+        className={`animate-${dir === 'left' ? 'slideLeft' : 'slideRight'}`}
+      >
+        <div className="text-[7rem] leading-none font-serif text-white/10 select-none mb-2">"</div>
+        <p className="text-white/90 text-2xl sm:text-3xl font-light leading-relaxed tracking-wide mb-10 px-4">
+          {t.text}
+        </p>
+        <div className="flex items-center justify-center gap-3 mb-10">
+          <div className={`w-10 h-[1px] bg-gradient-to-r ${config.gradient}`} />
+          <div>
+            <div className="text-white font-semibold text-sm tracking-boutique uppercase">{t.name}</div>
+            <div className="flex justify-center gap-1 mt-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span key={i} className={`text-sm ${i < t.rating ? 'text-amber-400' : 'text-white/20'}`}>★</span>
+              ))}
+            </div>
+          </div>
+          <div className={`w-10 h-[1px] bg-gradient-to-l ${config.gradient}`} />
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex items-center justify-center gap-6">
+        <button
+          onClick={() => go((active - 1 + total) % total, 'right')}
+          className="w-11 h-11 rounded-full border border-white/20 flex items-center justify-center
+                     text-white/60 hover:text-white hover:border-white/60 transition-all duration-500"
+          aria-label="Previous review"
+        >
+          &#8592;
+        </button>
+        <div className="flex gap-2">
+          {config.testimonials.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => go(i, i > active ? 'left' : 'right')}
+              className={`rounded-full transition-all duration-500 ${
+                i === active
+                  ? `w-6 h-1.5 bg-gradient-to-r ${config.gradient}`
+                  : 'w-1.5 h-1.5 bg-white/25 hover:bg-white/50'
+              }`}
+              aria-label={`Review ${i + 1}`}
+            />
+          ))}
+        </div>
+        <button
+          onClick={() => go((active + 1) % total, 'left')}
+          className="w-11 h-11 rounded-full border border-white/20 flex items-center justify-center
+                     text-white/60 hover:text-white hover:border-white/60 transition-all duration-500"
+          aria-label="Next review"
+        >
+          &#8594;
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function DemoSite({ lead }: Props) {
   const config = getCategoryConfig(lead.category)
   const city   = getCityShort(lead.address)
@@ -43,7 +119,7 @@ export default function DemoSite({ lead }: Props) {
 
   const [navSolid, setNavSolid] = useState(false)
   useEffect(() => {
-    const onScroll = () => setNavSolid(window.scrollY > 60)
+    const onScroll = () => setNavSolid(window.scrollY > 80)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
@@ -58,34 +134,38 @@ export default function DemoSite({ lead }: Props) {
     <div className="min-h-screen bg-white font-sans">
 
       {/* ── Navbar ───────────────────────────────────────── */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-400 ${
-        navSolid ? 'bg-white/96 backdrop-blur-lg shadow-sm' : 'bg-transparent'
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        navSolid ? 'bg-white/97 backdrop-blur-xl shadow-[0_1px_0_rgba(0,0,0,0.06)]' : 'bg-transparent'
       }`}>
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className={`font-bold text-lg tracking-tight transition-colors duration-300 ${navSolid ? 'text-gray-900' : 'text-white'}`}>
+        <div className="max-w-7xl mx-auto px-8 py-5 flex items-center justify-between">
+          <span className={`font-serif font-semibold text-lg tracking-wide transition-colors duration-500 ${
+            navSolid ? 'text-gray-900' : 'text-white'
+          }`}>
             {lead.name}
           </span>
-          <div className="flex items-center gap-3">
-            <a href="#services"
-              className={`hidden sm:block text-sm font-medium transition-colors duration-300 ${navSolid ? 'text-gray-500 hover:text-gray-900' : 'text-white/80 hover:text-white'}`}>
-              Services
-            </a>
-            <a href="#gallery"
-              className={`hidden sm:block text-sm font-medium transition-colors duration-300 ${navSolid ? 'text-gray-500 hover:text-gray-900' : 'text-white/80 hover:text-white'}`}>
-              Gallery
-            </a>
-            <a href="#contact"
-              className={`hidden sm:block text-sm font-medium transition-colors duration-300 ${navSolid ? 'text-gray-500 hover:text-gray-900' : 'text-white/80 hover:text-white'}`}>
-              Contact
-            </a>
+          <div className="flex items-center gap-8">
+            {['Services', 'Gallery', 'Contact'].map(label => (
+              <a
+                key={label}
+                href={`#${label.toLowerCase()}`}
+                className={`hidden md:block text-xs font-medium tracking-boutique uppercase transition-colors duration-500 ${
+                  navSolid ? 'text-gray-400 hover:text-gray-900' : 'text-white/70 hover:text-white'
+                }`}
+              >
+                {label}
+              </a>
+            ))}
             {phone && (
-              <a href={`tel:${phone}`}
-                className={`ml-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 ${
+              <a
+                href={`tel:${phone}`}
+                className={`px-5 py-2.5 text-xs font-semibold tracking-boutique uppercase rounded-full
+                            border transition-all duration-500 ${
                   navSolid
-                    ? 'bg-gray-900 text-white hover:bg-gray-700'
-                    : 'bg-white/20 text-white hover:bg-white/30 border border-white/30 backdrop-blur-sm'
-                }`}>
-                {navSolid ? phone : 'Call Now'}
+                    ? 'border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white'
+                    : 'border-white/50 text-white hover:bg-white/15'
+                }`}
+              >
+                Call Now
               </a>
             )}
           </div>
@@ -93,121 +173,135 @@ export default function DemoSite({ lead }: Props) {
       </nav>
 
       {/* ── Hero — full-bleed photo ───────────────────────── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Background photo */}
+      <section className="relative h-screen min-h-[700px] flex items-center justify-center overflow-hidden">
         <div
-          className="absolute inset-0 bg-center bg-cover bg-no-repeat scale-105"
-          style={{ backgroundImage: `url(${PH(config.heroPhoto)})` }}
+          className="absolute inset-0 bg-center bg-cover scale-[1.04] transition-transform"
+          style={{ backgroundImage: `url(${PH(config.heroPhoto)})`, ...IMG_STYLE }}
         />
-        {/* Dark gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/50 to-black/75" />
+        {/* Layered dark overlays for depth */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/80" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/20" />
 
-        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-          {/* Category badge */}
-          <div className="inline-flex items-center gap-2 rounded-full px-5 py-2 mb-8 animate-fadeIn
-                          border border-white/30 bg-white/10 backdrop-blur-md">
-            <span className="text-white/90 text-xs font-bold uppercase tracking-[0.2em]">
-              {lead.category} &nbsp;·&nbsp; {city}
+        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
+          {/* Eyebrow */}
+          <div className="inline-flex items-center gap-3 mb-10 animate-fadeIn">
+            <div className={`w-8 h-px bg-gradient-to-r ${config.gradient}`} />
+            <span className="text-white/80 text-[10px] font-semibold tracking-luxury uppercase">
+              {lead.category} &nbsp;&nbsp;{city}, FL
             </span>
+            <div className={`w-8 h-px bg-gradient-to-l ${config.gradient}`} />
           </div>
 
           {/* Business name */}
-          <h1 className="font-serif text-5xl sm:text-7xl md:text-8xl font-bold text-white mb-6
-                         leading-[1.05] tracking-tight animate-fadeUp text-shadow-hero">
+          <h1 className="font-serif font-bold text-white leading-[1.02] tracking-tight mb-6 animate-fadeUp
+                         text-[clamp(3rem,9vw,6.5rem)] text-shadow-hero">
             {lead.name}
           </h1>
 
           {/* Tagline */}
-          <p className="text-white/85 text-xl sm:text-2xl font-light mb-4
+          <p className="text-white/75 text-base sm:text-xl font-light tracking-[0.06em] mb-4
                         opacity-0 animate-fadeUp-delay-1 text-shadow-sm">
             {config.tagline}
           </p>
 
           {/* Subtext */}
-          <p className="text-white/65 text-base sm:text-lg max-w-xl mx-auto mb-12
-                        opacity-0 animate-fadeUp-delay-2">
+          <p className="text-white/50 text-sm max-w-lg mx-auto mb-14
+                        opacity-0 animate-fadeUp-delay-2 leading-relaxed">
             {config.subtext}
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center opacity-0 animate-fadeUp-delay-3">
-            <a href="#contact"
-              className={`px-9 py-4 rounded-2xl font-bold text-white text-lg shadow-2xl
-                          bg-gradient-to-r ${config.gradient}
-                          hover:shadow-[0_8px_40px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-1`}>
+            <a
+              href="#contact"
+              className={`px-10 py-4 rounded-full font-semibold text-sm tracking-boutique uppercase text-white
+                          bg-gradient-to-r ${config.gradient} shadow-xl
+                          hover:shadow-[0_12px_48px_rgba(0,0,0,0.5)]
+                          transition-all duration-500 hover:-translate-y-1`}
+            >
               {config.ctaText}
             </a>
             {phone && (
-              <a href={`tel:${phone}`}
-                className="px-9 py-4 rounded-2xl font-bold text-white text-lg
-                           border border-white/40 bg-white/10 backdrop-blur-md
-                           hover:bg-white/20 transition-all duration-300 hover:-translate-y-1">
-                📞 {phone}
+              <a
+                href={`tel:${phone}`}
+                className="px-10 py-4 rounded-full font-semibold text-sm tracking-boutique uppercase text-white
+                           border border-white/35 hover:border-white/70 hover:bg-white/10
+                           transition-all duration-500 hover:-translate-y-1 backdrop-blur-sm"
+              >
+                {phone}
               </a>
             )}
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-fadeIn">
-          <span className="text-white/50 text-[10px] uppercase tracking-[0.25em]">Scroll</span>
-          <div className="w-px h-10 bg-gradient-to-b from-white/50 to-transparent" />
+        {/* Animated scroll line */}
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0">
+          <div className="w-px h-16 bg-white/15 relative overflow-hidden rounded-full">
+            <div className="absolute left-0 w-full h-1/2 bg-white/70 rounded-full animate-scrollLine" />
+          </div>
         </div>
       </section>
 
       {/* ── Stats bar ────────────────────────────────────── */}
-      <section className="bg-gray-950 text-white py-12 px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-6 text-center">
+      <section className="bg-gray-950 py-16 px-6">
+        <div className="max-w-4xl mx-auto grid grid-cols-3 divide-x divide-white/10">
           {[config.stat1, config.stat2, config.stat3].map((stat, i) => (
-            <div key={i}>
-              <div className={`text-3xl sm:text-4xl font-black mb-1 bg-gradient-to-r ${config.gradient} bg-clip-text text-transparent`}>
+            <div key={i} className="text-center px-6">
+              <div className={`text-3xl sm:text-4xl font-black mb-2 bg-gradient-to-r ${config.gradient} bg-clip-text text-transparent`}>
                 {stat.value}
               </div>
-              <div className="text-gray-400 text-xs uppercase tracking-widest">{stat.label}</div>
+              <div className="text-gray-500 text-[10px] tracking-luxury uppercase">{stat.label}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── About ────────────────────────────────────────── */}
-      <section className="py-24 px-6 bg-white" id="about">
+      <section className="py-36 px-6 bg-white" id="about">
         <div
           ref={about.ref}
-          className={`max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center
-                      transition-all duration-700 ${about.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+          className={`max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center
+                      transition-all duration-1000 ${about.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
         >
-          {/* Photo */}
-          <div className="relative rounded-3xl overflow-hidden aspect-[4/3] shadow-2xl">
-            <img
-              src={PH(config.aboutPhoto, 900)}
-              alt={`${lead.name} — ${lead.category}`}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+          <div className="relative">
+            <div className="rounded-3xl overflow-hidden aspect-[3/4] sm:aspect-[4/3] shadow-2xl">
+              <img
+                src={PH(config.aboutPhoto, 900)}
+                alt={lead.name}
+                className="w-full h-full object-cover transition-transform duration-700 hover:scale-[1.03]"
+                style={IMG_STYLE}
+                loading="lazy"
+              />
+            </div>
+            {/* Floating accent card */}
+            <div className={`absolute -bottom-6 -right-6 bg-gradient-to-br ${config.gradient}
+                             rounded-2xl px-7 py-5 shadow-xl hidden sm:block`}>
+              <div className="text-white font-black text-2xl">{config.stat1.value}</div>
+              <div className="text-white/80 text-xs tracking-boutique uppercase mt-0.5">{config.stat1.label}</div>
+            </div>
           </div>
 
-          {/* Text */}
-          <div>
-            <span className={`text-sm font-bold uppercase tracking-widest ${config.accentClass}`}>
-              About Us
-            </span>
-            <h2 className="font-serif text-4xl sm:text-5xl font-bold text-gray-900 mt-3 mb-6 leading-tight">
+          <div className="lg:pl-8">
+            <div className={`w-10 h-px bg-gradient-to-r ${config.gradient} mb-8`} />
+            <span className="text-gray-400 text-xs tracking-luxury uppercase font-semibold">About Us</span>
+            <h2 className="font-serif font-bold text-gray-900 leading-tight tracking-tight mb-7 mt-4
+                           text-[clamp(2.2rem,5vw,3.5rem)]">
               {lead.name}
             </h2>
-            <p className="text-gray-500 text-lg leading-relaxed mb-6">
-              {config.subtext} We take pride in serving the {city} community with the highest
-              standards of quality and care. Every client who walks through our doors becomes
-              part of our family.
+            <p className="text-gray-500 text-lg font-light leading-relaxed mb-6">
+              {config.subtext} We take pride in serving the {city} community with care and
+              intention — blending expertise with an environment that makes every visit worth
+              returning to.
             </p>
-            <p className="text-gray-400 text-base leading-relaxed mb-8">
-              Whether you're a first-time visitor or a long-time loyal customer, our team
-              brings passion and expertise to every interaction. That's the {lead.name} difference.
+            <p className="text-gray-400 text-base font-light leading-relaxed mb-10">
+              Whether you&apos;re a first-time visitor or a longtime client, our team brings
+              the same level of dedication to every interaction. That&apos;s the standard at {lead.name}.
             </p>
             <a
               href="#contact"
-              className={`inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl font-bold text-white
-                          bg-gradient-to-r ${config.gradient} hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5`}
+              className={`inline-flex items-center gap-3 px-8 py-4 rounded-full font-semibold text-sm
+                          tracking-boutique uppercase text-white bg-gradient-to-r ${config.gradient}
+                          hover:shadow-xl transition-all duration-500 hover:-translate-y-0.5`}
             >
               {config.ctaText}
             </a>
@@ -216,219 +310,200 @@ export default function DemoSite({ lead }: Props) {
       </section>
 
       {/* ── Services ─────────────────────────────────────── */}
-      <section className="py-24 px-6 bg-gray-50" id="services">
+      <section className="py-36 px-6 bg-[#fafafa]" id="services">
         <div
           ref={services.ref}
-          className={`max-w-6xl mx-auto transition-all duration-700 ${services.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+          className={`max-w-7xl mx-auto transition-all duration-1000 ${services.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
         >
-          <div className="text-center mb-16">
-            <span className={`text-sm font-bold uppercase tracking-widest ${config.accentClass}`}>
-              What We Offer
-            </span>
-            <h2 className="font-serif text-4xl sm:text-5xl font-bold text-gray-900 mt-3 mb-4">
+          <div className="max-w-lg mb-20">
+            <span className="text-gray-400 text-xs tracking-luxury uppercase font-semibold">What We Offer</span>
+            <h2 className="font-serif font-bold text-gray-900 leading-tight tracking-tight mt-4
+                           text-[clamp(2.2rem,5vw,3.5rem)]">
               Our Services
             </h2>
-            <p className="text-gray-400 text-lg max-w-xl mx-auto">
-              Everything you need, delivered with expertise and care.
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-100 rounded-3xl overflow-hidden shadow-sm">
             {config.services.map((service, i) => (
               <div
                 key={i}
-                className="group bg-white rounded-2xl p-7 shadow-sm hover:shadow-2xl border border-gray-100
-                           transition-all duration-300 hover:-translate-y-1.5 cursor-default"
-                style={{ transitionDelay: `${i * 60}ms` }}
+                className="group bg-white p-10 hover:bg-gray-950 transition-all duration-500 cursor-default"
               >
-                <div className="text-3xl mb-4">{service.icon}</div>
-                <h3 className="font-bold text-gray-900 text-lg mb-2">{service.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{service.desc}</p>
+                <div className={`w-5 h-px bg-gradient-to-r ${config.gradient} mb-8
+                                 group-hover:w-10 transition-all duration-500`} />
+                <h3 className="font-serif font-semibold text-gray-900 text-xl mb-4 leading-snug
+                               group-hover:text-white transition-colors duration-500">
+                  {service.title}
+                </h3>
+                <p className="text-gray-400 text-sm font-light leading-relaxed
+                              group-hover:text-gray-400 transition-colors duration-500">
+                  {service.desc}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Gallery — real photos ─────────────────────────── */}
-      <section className="py-24 px-6 bg-white" id="gallery">
+      {/* ── Gallery — editorial photos ────────────────────── */}
+      <section className="py-36 px-6 bg-white" id="gallery">
         <div
           ref={gallery.ref}
-          className={`max-w-6xl mx-auto transition-all duration-700 ${gallery.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+          className={`max-w-7xl mx-auto transition-all duration-1000 ${gallery.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
         >
-          <div className="text-center mb-16">
-            <span className={`text-sm font-bold uppercase tracking-widest ${config.accentClass}`}>
-              Our Work
-            </span>
-            <h2 className="font-serif text-4xl sm:text-5xl font-bold text-gray-900 mt-3">
-              Portfolio
-            </h2>
+          <div className="flex items-end justify-between mb-16">
+            <div>
+              <span className="text-gray-400 text-xs tracking-luxury uppercase font-semibold">Our Work</span>
+              <h2 className="font-serif font-bold text-gray-900 leading-tight tracking-tight mt-4
+                             text-[clamp(2.2rem,5vw,3.5rem)]">
+                Portfolio
+              </h2>
+            </div>
+            <a href="#contact"
+              className={`hidden sm:inline-flex items-center gap-2 text-sm font-medium tracking-boutique
+                          uppercase bg-gradient-to-r ${config.gradient} bg-clip-text text-transparent
+                          hover:opacity-75 transition-opacity duration-300`}>
+              Book Now &#8594;
+            </a>
           </div>
 
+          {/* Asymmetric grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {config.gallery.map((item, i) => (
-              <div
-                key={i}
-                className="relative aspect-square rounded-2xl overflow-hidden group cursor-pointer shadow-sm"
-                style={{ transitionDelay: `${i * 50}ms` }}
-              >
-                <img
-                  src={PH(item.photo, 700, 80)}
-                  alt={item.label}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent
-                                opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="absolute bottom-0 left-0 right-0 p-4
-                                translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100
-                                transition-all duration-300">
-                  <span className="text-white font-bold text-sm drop-shadow-lg">{item.label}</span>
+            {config.gallery.map((item, i) => {
+              const tall = i === 0 || i === 4
+              return (
+                <div
+                  key={i}
+                  className={`relative overflow-hidden rounded-2xl group cursor-pointer ${tall ? 'row-span-2' : ''}`}
+                  style={{
+                    aspectRatio: tall ? '3/4' : '4/3',
+                    transitionDelay: `${i * 40}ms`
+                  }}
+                >
+                  <img
+                    src={PH(item.photo, 700, 82)}
+                    alt={item.label}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.07]"
+                    style={IMG_STYLE}
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent
+                                  opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute bottom-0 left-0 right-0 p-5
+                                  translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100
+                                  transition-all duration-500">
+                    <span className="text-white font-semibold text-sm tracking-boutique uppercase">{item.label}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
 
-      {/* ── Testimonials ─────────────────────────────────── */}
-      <section className="py-24 px-6 bg-gray-950 relative overflow-hidden" id="reviews">
-        {/* Subtle photo tint */}
+      {/* ── Testimonials — carousel ───────────────────────── */}
+      <section className="py-36 px-6 bg-gray-950 relative overflow-hidden" id="reviews">
         <div
-          className="absolute inset-0 bg-center bg-cover bg-no-repeat opacity-10"
-          style={{ backgroundImage: `url(${PH(config.heroPhoto, 1200, 40)})` }}
+          className="absolute inset-0 bg-center bg-cover opacity-[0.07]"
+          style={{ backgroundImage: `url(${PH(config.heroPhoto, 1200, 30)})`, ...IMG_STYLE }}
         />
-        <div className="absolute inset-0 bg-gray-950/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-950/60 to-gray-950" />
 
         <div
           ref={reviews.ref}
-          className={`relative z-10 max-w-6xl mx-auto transition-all duration-700 ${reviews.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+          className={`relative z-10 max-w-7xl mx-auto transition-all duration-1000 ${reviews.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
         >
-          <div className="text-center mb-16">
-            <span className="text-sm font-bold uppercase tracking-widest text-gray-400">
-              What Clients Say
-            </span>
-            <h2 className="font-serif text-4xl sm:text-5xl font-bold text-white mt-3">
+          <div className="text-center mb-20">
+            <span className="text-gray-500 text-xs tracking-luxury uppercase font-semibold">What Clients Say</span>
+            <h2 className="font-serif font-bold text-white leading-tight tracking-tight mt-4
+                           text-[clamp(2.2rem,5vw,3.5rem)]">
               Client Reviews
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {config.testimonials.map((t, i) => (
-              <div
-                key={i}
-                className="rounded-2xl p-7 border border-white/10 bg-white/5 backdrop-blur-md
-                           hover:-translate-y-1.5 transition-all duration-300"
-                style={{ transitionDelay: `${i * 80}ms` }}
-              >
-                <div className="text-5xl text-white/15 font-serif leading-none mb-4">"</div>
-                <p className="text-gray-300 text-base leading-relaxed mb-6">{t.text}</p>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center
-                                   text-white font-bold text-sm bg-gradient-to-br ${config.gradient}`}>
-                    {t.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="text-white font-semibold text-sm">{t.name}</div>
-                    <StarRating rating={t.rating} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <TestimonialCarousel config={config} />
         </div>
       </section>
 
       {/* ── Contact ──────────────────────────────────────── */}
-      <section className="py-24 px-6 bg-white" id="contact">
+      <section className="py-36 px-6 bg-white" id="contact">
         <div
           ref={contact.ref}
-          className={`max-w-6xl mx-auto transition-all duration-700 ${contact.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+          className={`max-w-7xl mx-auto transition-all duration-1000 ${contact.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
         >
-          <div className="text-center mb-16">
-            <span className={`text-sm font-bold uppercase tracking-widest ${config.accentClass}`}>
-              Reach Out
-            </span>
-            <h2 className="font-serif text-4xl sm:text-5xl font-bold text-gray-900 mt-3">
-              Get In Touch
-            </h2>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-start">
+            {/* Left */}
+            <div>
+              <span className="text-gray-400 text-xs tracking-luxury uppercase font-semibold">Reach Out</span>
+              <h2 className="font-serif font-bold text-gray-900 leading-tight tracking-tight mt-4 mb-12
+                             text-[clamp(2.2rem,5vw,3.5rem)]">
+                Get In Touch
+              </h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            {/* Info */}
-            <div className="space-y-6">
-              {phone && (
-                <a href={`tel:${phone}`} className="flex items-center gap-4 group">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl
-                                   shadow-lg bg-gradient-to-br ${config.gradient}`}>
-                    📞
-                  </div>
+              <div className="space-y-10">
+                {phone && (
                   <div>
-                    <div className="text-gray-400 text-xs uppercase tracking-widest mb-1">Phone</div>
-                    <div className="text-gray-900 font-bold text-xl group-hover:underline">{phone}</div>
+                    <div className="text-gray-400 text-[10px] tracking-luxury uppercase mb-2">Phone</div>
+                    <a href={`tel:${phone}`}
+                      className={`font-serif font-semibold text-2xl text-gray-900
+                                  bg-gradient-to-r ${config.gradient} bg-clip-text
+                                  hover:text-transparent transition-colors duration-500`}>
+                      {phone}
+                    </a>
                   </div>
-                </a>
-              )}
-              <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl
-                                 shadow-lg bg-gradient-to-br ${config.gradient}`}>
-                  📍
+                )}
+                <div>
+                  <div className="text-gray-400 text-[10px] tracking-luxury uppercase mb-2">Address</div>
+                  <div className="text-gray-900 font-medium leading-relaxed">{lead.address}</div>
                 </div>
                 <div>
-                  <div className="text-gray-400 text-xs uppercase tracking-widest mb-1">Address</div>
-                  <div className="text-gray-900 font-semibold leading-snug">{lead.address}</div>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl
-                                 shadow-lg bg-gradient-to-br ${config.gradient} flex-shrink-0`}>
-                  🕐
-                </div>
-                <div>
-                  <div className="text-gray-400 text-xs uppercase tracking-widest mb-2">Business Hours</div>
-                  {config.hours.map((h, i) => (
-                    <div key={i} className="text-gray-700 font-medium text-sm leading-6">{h}</div>
-                  ))}
+                  <div className="text-gray-400 text-[10px] tracking-luxury uppercase mb-3">Hours</div>
+                  <div className="space-y-1.5">
+                    {config.hours.map((h, i) => (
+                      <div key={i} className="text-gray-600 text-sm font-light">{h}</div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Decorative about mini-image */}
-              <div className="mt-6 rounded-2xl overflow-hidden aspect-video shadow-xl hidden sm:block">
+              {/* Photo */}
+              <div className="mt-14 rounded-2xl overflow-hidden aspect-video shadow-xl hidden sm:block">
                 <img
-                  src={PH(config.aboutPhoto, 600)}
+                  src={PH(config.aboutPhoto, 700)}
                   alt={lead.name}
                   className="w-full h-full object-cover"
+                  style={IMG_STYLE}
                   loading="lazy"
                 />
               </div>
             </div>
 
-            {/* Form */}
-            <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100 shadow-sm">
-              <h3 className="font-serif text-gray-900 font-bold text-2xl mb-6">Send a Message</h3>
-              <div className="space-y-4">
+            {/* Right — form */}
+            <div className="bg-gray-50 rounded-3xl p-10 border border-gray-100">
+              <h3 className="font-serif font-bold text-gray-900 text-2xl mb-8">Send a Message</h3>
+              <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                   <input type="text" placeholder="First name"
-                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900
-                               placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors" />
+                    className="w-full bg-white border border-gray-200 rounded-xl px-5 py-4 text-gray-900 text-sm
+                               placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors duration-300" />
                   <input type="text" placeholder="Last name"
-                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900
-                               placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors" />
+                    className="w-full bg-white border border-gray-200 rounded-xl px-5 py-4 text-gray-900 text-sm
+                               placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors duration-300" />
                 </div>
                 <input type="email" placeholder="Email address"
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900
-                             placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors" />
+                  className="w-full bg-white border border-gray-200 rounded-xl px-5 py-4 text-gray-900 text-sm
+                             placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors duration-300" />
                 <input type="tel" placeholder="Phone number"
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900
-                             placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors" />
-                <textarea placeholder="How can we help you?" rows={4}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900
-                             placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors resize-none" />
+                  className="w-full bg-white border border-gray-200 rounded-xl px-5 py-4 text-gray-900 text-sm
+                             placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors duration-300" />
+                <textarea placeholder="How can we help you?" rows={5}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-5 py-4 text-gray-900 text-sm
+                             placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-colors duration-300 resize-none" />
                 <button
-                  className={`w-full py-4 rounded-xl font-bold text-white text-lg shadow-lg
-                              bg-gradient-to-r ${config.gradient}
-                              hover:shadow-2xl transition-all duration-300 hover:-translate-y-0.5`}>
-                  {config.ctaText} →
+                  className={`w-full py-4 rounded-xl font-semibold text-sm tracking-boutique uppercase text-white
+                              bg-gradient-to-r ${config.gradient} shadow-lg
+                              hover:shadow-2xl transition-all duration-500 hover:-translate-y-0.5`}>
+                  {config.ctaText}
                 </button>
               </div>
             </div>
@@ -437,27 +512,29 @@ export default function DemoSite({ lead }: Props) {
       </section>
 
       {/* ── Footer ───────────────────────────────────────── */}
-      <footer className="bg-gray-950 text-white py-14 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8 mb-10">
+      <footer className="bg-gray-950 text-white py-16 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-10 mb-12">
             <div>
-              <div className="font-serif font-bold text-3xl mb-1">{lead.name}</div>
-              <div className={`text-sm ${config.accentClass}`}>{lead.category} · {city}</div>
+              <div className="font-serif font-bold text-3xl mb-2">{lead.name}</div>
+              <div className="text-gray-500 text-xs tracking-boutique uppercase">{lead.category} &nbsp;·&nbsp; {city}</div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-5 text-sm">
+            <div className="flex flex-col sm:flex-row gap-6 text-xs tracking-boutique uppercase">
               {phone && (
-                <a href={`tel:${phone}`} className="text-gray-400 hover:text-white transition-colors">
-                  📞 {phone}
+                <a href={`tel:${phone}`} className="text-gray-500 hover:text-white transition-colors duration-300">
+                  {phone}
                 </a>
               )}
-              <a href="#about"    className="text-gray-400 hover:text-white transition-colors">About</a>
-              <a href="#services" className="text-gray-400 hover:text-white transition-colors">Services</a>
-              <a href="#gallery"  className="text-gray-400 hover:text-white transition-colors">Gallery</a>
-              <a href="#contact"  className="text-gray-400 hover:text-white transition-colors">Contact</a>
+              {['About', 'Services', 'Gallery', 'Contact'].map(l => (
+                <a key={l} href={`#${l.toLowerCase()}`}
+                  className="text-gray-500 hover:text-white transition-colors duration-300">
+                  {l}
+                </a>
+              ))}
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row justify-between gap-2 text-gray-600 text-xs">
-            <span>© {new Date().getFullYear()} {lead.name}. All rights reserved.</span>
+          <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row justify-between gap-2 text-gray-700 text-xs">
+            <span>&copy; {new Date().getFullYear()} {lead.name}. All rights reserved.</span>
             <span>{lead.address}</span>
           </div>
         </div>
