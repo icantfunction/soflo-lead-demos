@@ -3,28 +3,33 @@
 @tailwind utilities;
 
 @layer base {
-  html {
-    scroll-behavior: smooth;
-  }
-  body {
-    @apply antialiased;
+  html { scroll-behavior: smooth; }
+  body { @apply antialiased; }
+  :root {
+    --font-inter: 'Inter', sans-serif;
+    --font-playfair: 'Playfair Display', serif;
   }
 }
 
 @layer utilities {
-  .opacity-0-start {
-    opacity: 0;
-  }
-  .text-shadow {
-    text-shadow: 0 2px 20px rgba(0,0,0,0.3);
-  }
+  .font-sans  { font-family: var(--font-inter, 'Inter', sans-serif); }
+  .font-serif { font-family: var(--font-playfair, 'Playfair Display', serif); }
+  .text-shadow-hero { text-shadow: 0 2px 40px rgba(0,0,0,0.5); }
+  .text-shadow-sm   { text-shadow: 0 1px 8px rgba(0,0,0,0.3); }
   .glass {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.14);
   }
-  .card-hover {
-    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl;
+  .glass-dark {
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.1);
   }
+  .card-lift {
+    @apply transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl;
+  }
+  .img-cover { @apply object-cover w-full h-full; }
 }
