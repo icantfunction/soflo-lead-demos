@@ -7,6 +7,28 @@ import { getCityShort } from '@/lib/leads'
 
 interface Props { lead: Lead }
 
+const ACRONYMS = new Set(['LLC', 'LLP', 'INC', 'CO', 'HVAC', 'DJ', 'BBQ', 'AC', 'USA', 'FL', 'TV', 'PR', 'DBA'])
+// Words that should stay lowercase unless first in name
+const SMALL = new Set(['a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'at', 'by', 'in', 'of', 'to', 'up'])
+
+function formatName(raw: string): string {
+  const words = raw.trim().split(/\s+/).filter(Boolean)
+  return words.map((word, idx) => {
+    // Keep separators / symbols as-is (e.g. "-", "&", "-")
+    if (/^[^a-zA-Z0-9]+$/.test(word)) return word
+    const letters = word.replace(/[^a-zA-Z]/g, '')
+    const upper = letters.toUpperCase()
+    // Known acronyms
+    if (letters.length >= 2 && ACRONYMS.has(upper)) {
+      return word.replace(/[a-zA-Z]+/g, upper)
+    }
+    // Small words: lowercase unless first word
+    if (idx > 0 && SMALL.has(word.toLowerCase())) return word.toLowerCase()
+    // Default: title-case (first char upper, rest lower)
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  }).join(' ')
+}
+
 const PH = (urlOrId: string, w = 1400, q = 85) => {
   const base = urlOrId.startsWith('http')
     ? urlOrId
@@ -117,9 +139,10 @@ function TestimonialCarousel({ config }: { config: ReturnType<typeof getCategory
 }
 
 export default function DemoSite({ lead }: Props) {
-  const config = getCategoryConfig(lead.category)
-  const city   = getCityShort(lead.address)
-  const phone  = lead.phone || ''
+  const config      = getCategoryConfig(lead.category)
+  const city        = getCityShort(lead.address)
+  const phone       = lead.phone || ''
+  const displayName = formatName(lead.name)
 
   const [navSolid, setNavSolid] = useState(false)
   useEffect(() => {
@@ -145,7 +168,7 @@ export default function DemoSite({ lead }: Props) {
           <span className={`font-serif font-semibold text-lg tracking-wide transition-colors duration-500 ${
             navSolid ? 'text-gray-900' : 'text-white'
           }`}>
-            {lead.name}
+            {displayName}
           </span>
           <div className="flex items-center gap-8">
             {['Services', 'Gallery', 'Contact'].map(label => (
@@ -199,7 +222,7 @@ export default function DemoSite({ lead }: Props) {
           {/* Business name */}
           <h1 className="font-serif font-bold text-white leading-[1.02] tracking-tight mb-6 animate-fadeUp
                          text-[clamp(3rem,9vw,6.5rem)] text-shadow-hero">
-            {lead.name}
+            {displayName}
           </h1>
 
           {/* Tagline */}
@@ -271,7 +294,7 @@ export default function DemoSite({ lead }: Props) {
             <div className="rounded-3xl overflow-hidden aspect-[3/4] sm:aspect-[4/3] shadow-2xl">
               <img
                 src={PH(config.aboutPhoto, 900)}
-                alt={lead.name}
+                alt={displayName}
                 className="w-full h-full object-cover transition-transform duration-700 hover:scale-[1.03]"
                 style={IMG_STYLE}
                 loading="lazy"
@@ -290,7 +313,7 @@ export default function DemoSite({ lead }: Props) {
             <span className="text-gray-400 text-xs tracking-luxury uppercase font-semibold">About Us</span>
             <h2 className="font-serif font-bold text-gray-900 leading-tight tracking-tight mb-7 mt-4
                            text-[clamp(2.2rem,5vw,3.5rem)]">
-              {lead.name}
+              {displayName}
             </h2>
             <p className="text-gray-500 text-lg font-light leading-relaxed mb-6">
               {config.subtext} We take pride in serving the {city} community with care and
@@ -299,7 +322,7 @@ export default function DemoSite({ lead }: Props) {
             </p>
             <p className="text-gray-400 text-base font-light leading-relaxed mb-10">
               Whether you&apos;re a first-time visitor or a longtime client, our team brings
-              the same level of dedication to every interaction. That&apos;s the standard at {lead.name}.
+              the same level of dedication to every interaction. That&apos;s the standard at {displayName}.
             </p>
             <a
               href="#contact"
@@ -474,7 +497,7 @@ export default function DemoSite({ lead }: Props) {
               <div className="mt-14 rounded-2xl overflow-hidden aspect-video shadow-xl hidden sm:block">
                 <img
                   src={PH(config.aboutPhoto, 700)}
-                  alt={lead.name}
+                  alt={displayName}
                   className="w-full h-full object-cover"
                   style={IMG_STYLE}
                   loading="lazy"
@@ -520,7 +543,7 @@ export default function DemoSite({ lead }: Props) {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-10 mb-12">
             <div>
-              <div className="font-serif font-bold text-3xl mb-2">{lead.name}</div>
+              <div className="font-serif font-bold text-3xl mb-2">{displayName}</div>
               <div className="text-gray-500 text-xs tracking-boutique uppercase">{lead.category} &nbsp;·&nbsp; {city}</div>
             </div>
             <div className="flex flex-col sm:flex-row gap-6 text-xs tracking-boutique uppercase">
@@ -538,7 +561,7 @@ export default function DemoSite({ lead }: Props) {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row justify-between gap-2 text-gray-700 text-xs">
-            <span>&copy; {new Date().getFullYear()} {lead.name}. All rights reserved.</span>
+            <span>&copy; {new Date().getFullYear()} {displayName}. All rights reserved.</span>
             <span>{lead.address}</span>
           </div>
         </div>
